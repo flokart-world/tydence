@@ -1,6 +1,7 @@
 Declares the next commit ordinary: removes .tydence/manifest and
-.tydence/tokens/ from the index and the working tree. Everything
-else stays — the configuration and the .tydence/ltv/ records are
-tracked content, not stamp artifacts.
+.tydence/tokens/ from the index and the working tree — the state
+every stamp leaves behind, and the state the pre-commit guard
+refuses to commit. Everything else stays — the configuration and
+the .tydence/ltv/ records are tracked content, not stamp artifacts.
 
 Sealed stamps are untouched: their artifacts live in their commits.

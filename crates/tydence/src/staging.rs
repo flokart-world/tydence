@@ -1,18 +1,21 @@
 //! Index bookkeeping around stamps. A stamp commit is written by the
-//! sealing flow without ever touching the index or the working tree,
-//! so its artifacts exist only where stamps are — but two pieces of
-//! bookkeeping remain the checkout's business: queueing the working
-//! tree's LTV deposits so the next commit seals them, and guarding
-//! against stamp artifacts resurrected into the index (a reset, say),
-//! whose commit would become an heir claim that can only fail
-//! verification once its tree drifts.
+//! sealing flow without touching the index or the working tree, so
+//! three pieces of bookkeeping are the checkout's business: bringing
+//! the checkout to agree with the seal so a fresh stamp reads clean,
+//! queueing the working tree's LTV deposits so the next commit seals
+//! them, and guarding against an ordinary commit made while the
+//! artifacts sit in the index — whether left by a stamp or
+//! resurrected by a reset — whose commit would become an heir claim
+//! that can only fail verification once its tree drifts.
 
-use gix::bstr::BStr;
+use gix::bstr::{BStr, ByteSlice};
 use gix::index::entry::{Flags, Mode, Stat};
 use std::fmt;
 
 use super::deposits;
-use super::layout::{MANIFEST_PATH, TOKENS_PATH};
+use super::layout::{
+    LTV_CERTS_PATH, LTV_CRLS_PATH, MANIFEST_PATH, TOKENS_PATH,
+};
 
 // Single spelling of the boxed cause type, as in the tsp module.
 type FailureCause = Box<dyn std::error::Error + Send + Sync>;
@@ -25,7 +28,9 @@ pub enum Error {
     Deposits(deposits::Error),
     /// The index could not be read or written.
     Index { source: FailureCause },
-    /// A working-tree stamp artifact could not be removed.
+    /// The sealed objects could not be read.
+    Objects { source: FailureCause },
+    /// A working-tree stamp artifact could not be written or removed.
     Worktree { path: String, source: FailureCause },
 }
 
@@ -42,9 +47,12 @@ impl fmt::Display for Error {
             Self::Index { .. } => {
                 write!(formatter, "cannot read or write the index")
             }
+            Self::Objects { .. } => {
+                write!(formatter, "cannot read the sealed objects")
+            }
             Self::Worktree { path, .. } => write!(
                 formatter,
-                "cannot remove the working tree artifact at {path:?}"
+                "cannot write or remove the working tree artifact at {path:?}"
             ),
         }
     }
@@ -55,9 +63,9 @@ impl std::error::Error for Error {
         match self {
             Self::BareRepository => None,
             Self::Deposits(cause) => Some(cause),
-            Self::Index { source } | Self::Worktree { source, .. } => {
-                Some(source.as_ref())
-            }
+            Self::Index { source }
+            | Self::Objects { source }
+            | Self::Worktree { source, .. } => Some(source.as_ref()),
         }
     }
 }
@@ -66,6 +74,14 @@ fn index_error(
     source: impl std::error::Error + Send + Sync + 'static,
 ) -> Error {
     Error::Index {
+        source: Box::new(source),
+    }
+}
+
+fn objects_error(
+    source: impl std::error::Error + Send + Sync + 'static,
+) -> Error {
+    Error::Objects {
         source: Box::new(source),
     }
 }
@@ -143,6 +159,149 @@ pub fn stage_deposits(
     index.sort_entries();
     index.write(write_options()).map_err(index_error)?;
     Ok(staged)
+}
+
+/// One stamp-managed file of HEAD's tree: the manifest, a token, or
+/// an LTV record the seal covers.
+fn sealed_files(
+    repository: &gix::Repository,
+) -> Result<Vec<(String, gix::ObjectId)>, Error> {
+    let head_tree = repository
+        .head_commit()
+        .map_err(objects_error)?
+        .tree()
+        .map_err(objects_error)?;
+    let mut sealed = Vec::new();
+    let maybe_manifest_entry = head_tree
+        .lookup_entry_by_path(MANIFEST_PATH)
+        .map_err(objects_error)?;
+    if let Some(entry) = maybe_manifest_entry
+        && entry.mode().is_blob()
+    {
+        sealed.push((MANIFEST_PATH.to_string(), entry.object_id()));
+    }
+    for directory in [TOKENS_PATH, LTV_CERTS_PATH, LTV_CRLS_PATH] {
+        let maybe_entry = head_tree
+            .lookup_entry_by_path(directory)
+            .map_err(objects_error)?;
+        let Some(entry) = maybe_entry else {
+            continue;
+        };
+        if !entry.mode().is_tree() {
+            continue;
+        }
+        let tree = repository
+            .find_tree(entry.object_id())
+            .map_err(objects_error)?;
+        for maybe_child in tree.iter() {
+            let child = maybe_child.map_err(objects_error)?;
+            if !child.mode().is_blob() {
+                continue;
+            }
+            sealed.push((
+                format!("{directory}/{}", child.filename()),
+                child.object_id(),
+            ));
+        }
+    }
+    Ok(sealed)
+}
+
+/// Brings the working tree and the index to agree with HEAD for the
+/// stamp-managed paths — the manifest, the tokens, and the LTV
+/// records the seal covers — so a freshly stamped checkout reads
+/// clean. Leaving the stamped state for ordinary work is the
+/// explicit [`drop_artifacts`]; worktree LTV deposits HEAD does not
+/// cover are [`stage_deposits`]'s business and stay untouched.
+///
+/// The walk is not atomic, but every step writes content derived
+/// from HEAD alone, so a failure partway — disk full, say — leaves
+/// the seal intact and the sync safe to repeat: running it again
+/// converges the checkout.
+pub fn sync_artifacts(repository: &gix::Repository) -> Result<(), Error> {
+    let worktree = repository
+        .workdir()
+        .ok_or(Error::BareRepository)?
+        .to_owned();
+    let sealed = sealed_files(repository)?;
+    let mut index = repository.open_index().map_err(index_error)?;
+    let mut index_changed = false;
+    for (path, blob_id) in &sealed {
+        let file_path = worktree.join(path);
+        if let Some(parent) = file_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|source| {
+                Error::Worktree {
+                    path: path.clone(),
+                    source: Box::new(source),
+                }
+            })?;
+        }
+        let blob = repository.find_blob(*blob_id).map_err(objects_error)?;
+        std::fs::write(&file_path, &blob.data).map_err(|source| {
+            Error::Worktree {
+                path: path.clone(),
+                source: Box::new(source),
+            }
+        })?;
+        let path_ref: &BStr = path.as_bytes().into();
+        match index.entry_index_by_path(path_ref) {
+            Ok(position) => {
+                let entry = &mut index.entries_mut()[position];
+                if entry.id != *blob_id {
+                    entry.id = *blob_id;
+                    // A zeroed stat never matches the filesystem,
+                    // which makes git re-examine the content instead
+                    // of trusting a stat this code did not take.
+                    entry.stat = Stat::default();
+                    index_changed = true;
+                }
+            }
+            Err(_) => {
+                index.dangerously_push_entry(
+                    Stat::default(),
+                    *blob_id,
+                    Flags::empty(),
+                    Mode::FILE,
+                    path_ref,
+                );
+                index_changed = true;
+            }
+        }
+    }
+    // A token of a site the sealed profile no longer uses would
+    // otherwise linger in the checkout and keep it dirty; stale
+    // artifacts leave with the stamp that replaced them.
+    let sealed_paths: std::collections::HashSet<&[u8]> =
+        sealed.iter().map(|(path, _)| path.as_bytes()).collect();
+    let is_stale = |path: &BStr| {
+        is_stamp_artifact(path) && !sealed_paths.contains(path.as_bytes())
+    };
+    let stale: Vec<String> = index
+        .entries_with_paths_by_filter_map(|path, _entry| {
+            is_stale(path).then_some(())
+        })
+        .map(|(path, ())| path.to_string())
+        .collect();
+    for path in &stale {
+        let file_path = worktree.join(path);
+        if file_path.is_file() {
+            std::fs::remove_file(&file_path).map_err(|source| {
+                Error::Worktree {
+                    path: path.clone(),
+                    source: Box::new(source),
+                }
+            })?;
+        }
+    }
+    if !stale.is_empty() {
+        index.remove_entries(|_position, path, _entry| is_stale(path));
+        index_changed = true;
+    }
+    if index_changed {
+        index.sort_entries();
+        index.write(write_options()).map_err(index_error)?;
+    }
+    Ok(())
 }
 
 /// The stamp artifacts currently staged in the index — what the
@@ -242,6 +401,70 @@ mod tests {
         for path in &staged {
             assert!(sealed.lines().any(|line| line == path));
         }
+    }
+
+    #[test]
+    fn a_fresh_stamp_reads_clean_up_to_its_deposits() {
+        let fixture = live_fixture();
+        let repository_dir = tempfile::tempdir().expect("tempdir");
+        prepare_repository(repository_dir.path(), &fixture);
+        stamp_head(repository_dir.path(), &fixture).expect("the stamp seals");
+        sync_artifacts(&open(repository_dir.path()))
+            .expect("the checkout syncs");
+        stage_deposits(&open(repository_dir.path()))
+            .expect("the deposits stage");
+        // The artifacts are in place and the only difference left is
+        // the queued first-use deposit.
+        assert!(repository_dir.path().join(MANIFEST_PATH).is_file());
+        assert!(
+            repository_dir
+                .path()
+                .join(TOKENS_PATH)
+                .join("loop.tsr")
+                .is_file()
+        );
+        let status =
+            run_git(repository_dir.path(), &["status", "--porcelain"]);
+        // Presence and exclusivity are separate claims: `all` alone
+        // would hold vacuously on an empty status.
+        assert!(status.lines().count() >= 1, "no deposit was queued");
+        assert!(
+            status
+                .lines()
+                .all(|line| line.starts_with("A  .tydence/ltv/")),
+            "unexpected status: {status}"
+        );
+        // The follow-up stamp seals the deposits; nothing is left.
+        stamp_head(repository_dir.path(), &fixture)
+            .expect("the second stamp seals");
+        sync_artifacts(&open(repository_dir.path()))
+            .expect("the second sync succeeds");
+        stage_deposits(&open(repository_dir.path()))
+            .expect("the second pass stages");
+        let settled =
+            run_git(repository_dir.path(), &["status", "--porcelain"]);
+        assert_eq!(settled, "");
+    }
+
+    #[test]
+    fn a_stale_artifact_leaves_with_the_stamp_that_replaced_it() {
+        let fixture = live_fixture();
+        let repository_dir = tempfile::tempdir().expect("tempdir");
+        prepare_repository(repository_dir.path(), &fixture);
+        stamp_head(repository_dir.path(), &fixture).expect("the stamp seals");
+        sync_artifacts(&open(repository_dir.path()))
+            .expect("the checkout syncs");
+        // A token of a site the sealed profile no longer uses.
+        let ghost = repository_dir.path().join(TOKENS_PATH).join("ghost.tsr");
+        std::fs::write(&ghost, b"stale").expect("the ghost writes");
+        run_git(repository_dir.path(), &["add", ".tydence/tokens/ghost.tsr"]);
+        sync_artifacts(&open(repository_dir.path()))
+            .expect("the resync succeeds");
+        assert!(!ghost.exists());
+        let spotted = staged_artifacts(&open(repository_dir.path()))
+            .expect("the index reads");
+        assert!(!spotted.contains(&".tydence/tokens/ghost.tsr".to_string()));
+        assert!(spotted.contains(&".tydence/tokens/loop.tsr".to_string()));
     }
 
     #[test]

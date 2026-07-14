@@ -7,12 +7,15 @@ Seals one stamp commit over the branch HEAD points at:
      fully verifies each token before anything is sealed,
   4. writes the stamp commit and moves the branch to it.
 
-The commit is written directly: index and working tree stay as they
-are, and the stamp artifacts exist only in stamp commits. Trust
-material first learned from a fresh token cannot enter the already
-fixed manifest; it is deposited under .tydence/ltv/ in the working
-tree, queued in the index by this command, and sealed by the next
-commit — stamp or ordinary. Seal deposits promptly.
+The commit is written directly, and the index and working tree are
+then brought to match it: a fresh stamp reads clean, artifacts in
+place. Ordinary work departing from a stamp starts with
+`tydence drop` — the pre-commit guard refuses a commit that would
+carry the artifacts along. Trust material first learned from a
+fresh token cannot enter the already fixed manifest; it is
+deposited under .tydence/ltv/ in the working tree, queued in the
+index by this command, and sealed by the next commit — stamp or
+ordinary. Seal deposits promptly.
 
 Without --amend the stamp becomes a new commit with HEAD as its
 parent, certifying the same content (a zero-content-change stamp,

@@ -52,6 +52,7 @@ pub use snapshot::{
 };
 pub use staging::{
     Error as StagingError, drop_artifacts, stage_deposits, staged_artifacts,
+    sync_artifacts,
 };
 pub use stamp::{
     AcquireError, BindError, CreateError, CreateInputs, CreatedStamp,

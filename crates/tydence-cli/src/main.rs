@@ -191,6 +191,16 @@ fn format_moment(moment: std::time::SystemTime) -> String {
     }
 }
 
+/// Converges the checkout to the freshly sealed stamp: the index and
+/// working tree come to agree with HEAD, and the worktree LTV
+/// deposits HEAD does not cover are queued. Returns what was queued.
+fn converge_checkout(
+    repository: &gix::Repository,
+) -> Result<Vec<String>, FailureCause> {
+    tydence::sync_artifacts(repository)?;
+    Ok(tydence::stage_deposits(repository)?)
+}
+
 fn stamp(
     repository: &gix::Repository,
     args: &StampArgs,
@@ -245,7 +255,24 @@ fn stamp(
         );
     }
     println!("sealed {} on {}", created.commit_id, reference_name);
-    let queued = tydence::stage_deposits(repository)?;
+    // The seal is already history at this point, so a failure below
+    // must not read as a failed stamp: say the seal stands and how
+    // to converge — the sync derives everything from HEAD, so
+    // repeating it is safe.
+    let queued = match converge_checkout(repository) {
+        Ok(queued) => queued,
+        Err(cause) => {
+            report(cause.as_ref());
+            eprintln!(
+                "tydence: the stamp is sealed; only the checkout did not \
+                 converge to it — fix the cause, then run `git restore \
+                 --source=HEAD --staged --worktree -- .tydence`"
+            );
+            // The operational 2, not the verdict 1: nothing was
+            // judged and no evidence failed — the bookkeeping did.
+            return Ok(ExitCode::from(2));
+        }
+    };
     if !queued.is_empty() {
         println!("queued LTV deposits the manifest could not yet cover:");
         for path in &queued {

@@ -98,10 +98,13 @@ the branch to it.
   replacing any `Tydence-Stamp` lines of a stamp this one amends —
   a convenience for reading `git log`; no verification reads them.
 
-The commit is written directly: index and working tree stay as they
-are. When a site's certificate chain is seen for the first time,
-the trust material learned from its fresh token cannot enter the
-already fixed manifest; it is deposited under `.tydence/ltv/` in the
+The commit is written directly, and the index and working tree are
+then brought to match it: a fresh stamp reads clean, artifacts in
+place. Resuming ordinary work is the explicit `tydence drop` (§6),
+and a forgotten drop is caught by the pre-commit guard (§5). When a
+site's certificate chain is seen for the first time, the trust
+material learned from its fresh token cannot enter the already
+fixed manifest; it is deposited under `.tydence/ltv/` in the
 working tree and queued in the index, and the command names the
 deposits and asks for them to be sealed. Seal them promptly with a
 follow-up stamp or an ordinary commit (§7).
@@ -147,14 +150,15 @@ does not exist.
 tydence precommit
 ```
 
-Refuses a commit that would carry stamp artifacts. Stamp commits are
-written by `tydence stamp` directly, never through the index; if
-`.tydence/manifest` or `.tydence/tokens/` appear in the index — a
-reset or checkout resurrected them — the commit about to be made
-would merely inherit another stamp's artifacts, and its claim would
-fail verification forever after. The command exits 1 in that
-situation and names the paths; the index deposits queued by `stamp`
-itself (§3) are exactly what it lets through.
+Refuses a commit that would carry stamp artifacts. After every
+stamp, `.tydence/manifest` and `.tydence/tokens/` sit in the index
+in agreement with HEAD (§3), and a reset or checkout can resurrect
+them too; either way the ordinary commit about to be made would
+merely inherit a stamp's artifacts, and its claim would fail
+verification forever after. The command exits 1 in that situation
+and names the paths — `tydence drop` is the way out. The LTV
+deposits and records also staged by `stamp` are exactly what it
+lets through.
 
 Intended to be called from the repository's pre-commit hook:
 
@@ -174,10 +178,10 @@ tydence drop
 
 Declares the next commit ordinary: removes `.tydence/manifest` and
 `.tydence/tokens/` from the index and the working tree — the state
-`precommit` refuses. Everything else stays: the configuration and
-the `.tydence/ltv/` records are tracked content, not stamp
-artifacts. Sealed stamps are untouched; their artifacts live in
-their commits.
+every stamp leaves behind (§3), and the state `precommit` refuses.
+Everything else stays: the configuration and the `.tydence/ltv/`
+records are tracked content, not stamp artifacts. Sealed stamps are
+untouched; their artifacts live in their commits.
 
 ## 7. Operation
 

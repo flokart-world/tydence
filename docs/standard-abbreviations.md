@@ -28,6 +28,7 @@ These abbreviations save significant characters and are unambiguous:
 | argument | arg | 5 | Universal standard |
 | arguments | args | 5 | Established plural form |
 | configuration | config | 7 | Universal standard |
+| synchronize | sync | 7 | Rust std precedent (`File::sync_all`) |
 | destination | dest/dst | 7/8 | dest is common, dst pairs well with src |
 | directory | dir | 6 | Unix/Linux standard |
 | document | doc | 5 | Rust standard (cargo doc) |
