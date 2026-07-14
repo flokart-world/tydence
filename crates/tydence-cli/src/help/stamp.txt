@@ -1,0 +1,45 @@
+Seals one stamp commit over the branch HEAD points at:
+
+  1. refreshes the CRL snapshots recorded under .tydence/ltv/,
+  2. fixes .tydence/manifest over the tree being stamped, binding the
+     nearest earlier stamp on every line of history (renewal chain),
+  3. requests one token per site of the chosen profile over HTTPS and
+     fully verifies each token before anything is sealed,
+  4. writes the stamp commit and moves the branch to it.
+
+The commit is written directly: index and working tree stay as they
+are, and the stamp artifacts exist only in stamp commits. Trust
+material first learned from a fresh token cannot enter the already
+fixed manifest; it is deposited under .tydence/ltv/ in the working
+tree, queued in the index by this command, and sealed by the next
+commit — stamp or ordinary. Seal deposits promptly.
+
+Without --amend the stamp becomes a new commit with HEAD as its
+parent, certifying the same content (a zero-content-change stamp,
+also the renewal form). With --amend the stamp replaces the branch
+tip — its parents become the tip's parents — which rewrites history
+and is only safe while the tip has not been shared.
+
+TRUST ANCHORS
+
+Received tokens are verified against trust anchor certificates before
+sealing: the roots of the TSA certificate chains you have decided to
+trust, obtained out of band (a TSA publishes its root; an accredited
+CA publishes its certificates). Anchors are machine-local by design —
+a repository must not certify itself — and are named through git's
+own third-party configuration namespace:
+
+  git config --add tydence.anchor <PEM_FILE>
+
+The multi-valued key follows the usual configuration precedence:
+values set with --local are this repository's trust, values in the
+global or system configuration apply to every repository that has no
+better knowledge — all values accumulate. A leading ~/ in a value
+expands to the home directory. --anchor <PEM_FILE> adds more on top
+for one invocation. A PEM file may hold several concatenated
+certificates.
+
+The message receives Tydence-Stamp trailers carrying the manifest's
+double hash, spelled exactly like the past-manifest payload a later
+manifest would bind it by. The trailers are a convenience for reading
+git log; no verification reads them.

@@ -1,0 +1,128 @@
+#!/bin/bash
+# Pre-commit hook to ensure code quality
+# To use: git config core.hooksPath .githooks
+#
+# Design: every check fails closed. When a git command itself fails, the
+# hook aborts loudly instead of letting empty output read as "no problem
+# found".
+#
+# TODO: Extract these hooks into a shared repository with an automated
+# test harness and install them from there; sibling projects carry
+# their own copies of this script, so one harness would cover them
+# all. Until then, changes here must be verified manually with a
+# dedicated TMPDIR: clean pass, violation exit, and the mktemp-failure
+# window must all end with zero leftover temp files.
+
+echo "🔍 Running pre-commit checks..."
+
+# cargo fmt/clippy inspect the working tree while the commit records the
+# index. Any unstaged .rs edit or untracked .rs file makes the two
+# diverge, so a passing check would not vouch for the committed snapshot.
+# The whole tree is scanned on purpose: cargo compiles the whole
+# workspace, so even .rs files unrelated to this commit affect the
+# result. Rejecting outright is also deliberate: `git stash --keep-index`
+# inside a hook can destroy work on conflicts, and checking the index in
+# a temporary worktree would rebuild everything on every commit.
+worktree_changes=$(git diff --name-only) || {
+    echo "❌ Failed to list unstaged changes; aborting."
+    exit 1
+}
+if printf '%s\n' "$worktree_changes" | grep -q "\.rs$"; then
+    echo "❌ Unstaged changes detected in Rust files."
+    echo "   Please stage all Rust changes before committing."
+    echo "   This ensures cargo fmt checks the correct content."
+    exit 1
+fi
+
+untracked_files=$(git ls-files --others --exclude-standard) || {
+    echo "❌ Failed to list untracked files; aborting."
+    exit 1
+}
+if printf '%s\n' "$untracked_files" | grep -q "\.rs$"; then
+    echo "❌ Untracked Rust files detected."
+    echo "   Please stage or remove untracked Rust files before committing."
+    echo "   This ensures cargo fmt checks all relevant files."
+    exit 1
+fi
+
+echo "Checking Rust formatting..."
+if ! cargo fmt --all -- --check; then
+    echo "❌ Formatting errors found. Run 'cargo fmt --all' to fix."
+    exit 1
+fi
+
+echo "Running clippy..."
+if ! cargo clippy --workspace --all-targets -- -D warnings; then
+    echo "❌ Clippy warnings found. Fix them before committing."
+    exit 1
+fi
+
+echo "Checking file formatting..."
+HAS_ERRORS=false
+
+# Staged content is materialized so that a git failure is distinguishable
+# from a clean check; piping git show directly would turn read errors into
+# false passes
+#
+# The trap is registered once, before either mktemp, so any later exit
+# cleans up exactly the files that were created by then: single quotes
+# defer variable expansion to trap execution time, and GNU `rm -f ""`
+# silently ignores the empty operands of not-yet-created files
+STAGED_CONTENT_FILE=""
+STAGED_LIST_FILE=""
+trap 'rm -f "$STAGED_CONTENT_FILE" "$STAGED_LIST_FILE"' EXIT
+STAGED_CONTENT_FILE=$(mktemp) || exit 1
+STAGED_LIST_FILE=$(mktemp) || exit 1
+
+# NUL-delimited listing keeps paths with spaces as single entries; feeding
+# a `for` loop from unquoted command substitution would word-split them
+# into fragments that the existence check below would silently skip
+if ! git diff --cached --name-only -z > "$STAGED_LIST_FILE"; then
+    echo "❌ Failed to list staged files; aborting."
+    exit 1
+fi
+
+while IFS= read -r -d '' file; do
+    # Staged deletions have no content to check, and `git show :path`
+    # on them would abort the hook below
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+
+    # .rs stays in this list even though cargo fmt normalizes whitespace:
+    # rustfmt only reaches files referenced from a target's module tree,
+    # while this net also covers unreferenced ones (fixtures, scratch
+    # files) that still get committed. .md is also deliberate: two-space
+    # hard breaks are invisible and fragile, so this project writes hard
+    # breaks with a trailing backslash or <br> instead.
+    case "$file" in
+        *.rs|*.toml|*.yml|*.md)
+            if ! git show ":$file" > "$STAGED_CONTENT_FILE"; then
+                echo "❌ Failed to read staged content of: $file"
+                echo "   The hook cannot verify this file; aborting."
+                exit 1
+            fi
+
+            if grep -q " $" "$STAGED_CONTENT_FILE"; then
+                echo "❌ Trailing spaces in: $file"
+                HAS_ERRORS=true
+            fi
+
+            if [ -n "$(tail -c 1 "$STAGED_CONTENT_FILE")" ]; then
+                echo "❌ Missing final newline in: $file"
+                HAS_ERRORS=true
+            fi
+            ;;
+    esac
+done < "$STAGED_LIST_FILE"
+
+if [ "$HAS_ERRORS" = true ]; then
+    echo ""
+    echo "⚠️  Format errors found in staged files."
+    echo "   Please fix the issues and stage the changes again."
+    echo "   Tip: You can use 'sed -i \"s/[[:space:]]*$//' <file>' to remove trailing spaces"
+    echo "        and 'echo >> <file>' to add a final newline"
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"

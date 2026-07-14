@@ -1,0 +1,15 @@
+RFC 3161 trusted timestamps for git-managed data.
+
+A stamp is a commit whose tree carries .tydence/manifest — a canonical
+listing of every tracked file under double hashes — and one RFC 3161
+token per site in .tydence/tokens/. The proof is carried by the
+manifest and the tokens; git provides transport and organization.
+
+Sites and profiles are configured in .tydence/config, committed to the
+repository (see the configuration manual). Trust anchors never come
+from the repository itself: supply them from the outside, through the
+tydence.anchor git configuration key or --anchor (see
+`tydence stamp --help`).
+
+Exit status: 0 on success (for verify: every judged stamp passed),
+1 when a check or verdict fails, 2 on operational errors.

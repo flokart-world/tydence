@@ -1,0 +1,15 @@
+Refuses a commit that would carry stamp artifacts. Intended to be
+called from the repository's pre-commit hook: add a `tydence
+precommit` line to .git/hooks/pre-commit (a shell script, executable)
+and the hook's failure will stop the commit.
+
+Stamp commits are written by `tydence stamp` directly, never through
+the index. If .tydence/manifest or .tydence/tokens/ appear in the
+index — a reset or checkout resurrected them — the commit about to be
+made would merely inherit another stamp's artifacts: its claim fails
+verification as soon as the tree drifts, and history keeps the
+failure forever. This command exits 1 in that situation, naming the
+paths; run `tydence drop` to declare the next commit an ordinary one,
+or stamp with `tydence stamp` instead.
+
+Exits 0 when the index is clean of stamp artifacts.

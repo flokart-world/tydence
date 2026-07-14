@@ -1,0 +1,21 @@
+[package]
+name = "tydence-cli"
+description = "Command-line interface for tydence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["rfc3161", "timestamp", "git", "evidence", "tsp"]
+categories = ["command-line-utilities", "cryptography"]
+
+# The user-facing command is `tydence`; the crate name stays distinct
+# so the library crate can own the `tydence` name on crates.io
+[[bin]]
+name = "tydence"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+tydence.workspace = true

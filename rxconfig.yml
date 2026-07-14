@@ -1,0 +1,7 @@
+classifier:
+  # Convention documents assembled into the classification
+  # instrument, in order — assembly order is part of instrument
+  # identity.
+  convention_docs:
+    - docs/coding-conventions.md
+    - docs/standard-abbreviations.md

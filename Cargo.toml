@@ -1,0 +1,110 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/tydence",
+    "crates/tydence-cli",
+    "crates/tydence-ucd",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/flokart-world/tydence"
+readme = "README.md"
+
+# Version requirements are floors — the oldest versions verified to
+# work — with the patch digit included whenever the verified floor
+# is not an X.Y.0.
+[workspace.dependencies]
+# The command-line surface. default-features off keeps the binary
+# lean; "help" and "usage" carry the CLI's documentation (help text
+# stands in for a specification by design), "derive" keeps the
+# argument model declarative.
+clap = { version = "4.5", default-features = false, features = [
+    "derive",
+    "error-context",
+    "help",
+    "std",
+    "usage",
+] }
+# RFC 3161 / CMS structures come from the stable RustCrypto formats
+# line built on der 0.7 — the der 0.8 line has no stable cms or
+# x509-tsp release yet. "std" is enabled so their parse errors can
+# ride inside boxed std error sources.
+cmpv2 = { version = "0.2", features = ["std"] }
+cms = { version = "0.2.3", features = ["std"] }
+# "derive" backs the ESS structures (RFC 2634 / RFC 5035) the
+# verifier declares itself — no crate in the stable line ships them.
+# "pem" reads and writes the `ltv/` trust material, which the
+# stamping specification §3 stores PEM-encoded.
+der = { version = "0.7.10", features = ["derive", "oid", "pem", "std"] }
+# Nonce bytes for live token requests come straight from the
+# operating system's RNG. The 0.4 line matches the copy other
+# dependencies already pull in, so one version serves the whole tree.
+getrandom = "0.4"
+# default-features off: the default set drags in network transport,
+# credential handling and worktree-status machinery tydence never
+# uses — snapshot enumeration and stamping are local object-database
+# work. "attributes" supplies gix-submodule; "tree-editor" builds the
+# stamp tree; "index" backs the deposit staging and artifact guards;
+# "revision" resolves the revision specs the command line accepts;
+# both hash families stay enabled so either repository object format
+# opens.
+gix = { version = "0.85", default-features = false, features = [
+    "attributes",
+    "index",
+    "revision",
+    "sha1",
+    "sha256",
+    "tree-editor",
+] }
+# Test-only synthetic PKI: deterministic keys from fixed scalars and
+# RFC 6979 signing keep the certificate fixtures reproducible without
+# any RNG dependency.
+p256 = { version = "0.13.2", default-features = false, features = [
+    "ecdsa",
+    "pkcs8",
+    "std",
+] }
+# Writes and reads the PEM framing of `ltv/` CRL snapshots directly:
+# the stable x509-cert line gives CertificateList no PEM label, and
+# the orphan rule forbids supplying one here.
+pem-rfc7468 = { version = "0.7", features = ["alloc", "std"] }
+quote = "1.0.46"
+regex = "1.13"
+# SHA-1 identifies certificates in legacy ESSCertID attributes
+# (RFC 5816 requires supporting them); it never hashes evidence.
+sha1 = "0.10.6"
+sha2 = "0.10.9"
+sha3 = "0.10.9"
+syn = "2.0.118"
+tempfile = "3.27"
+tydence = { path = "crates/tydence", version = "0.1.0" }
+tydence-ucd = { path = "crates/tydence-ucd", version = "0.1.0" }
+# The live TSA transport. default-features off drops the content
+# codecs a raw-DER exchange never uses; "platform-verifier" makes
+# TLS trust come from the operating system's verifier, so deployment
+# environments (interception proxies included) control it without a
+# rebuild.
+ureq = { version = "3.3", default-features = false, features = [
+    "platform-verifier",
+    "rustls",
+] }
+x509-cert = { version = "0.2.3", default-features = false, features = [
+    "pem",
+    "std",
+] }
+x509-tsp = "0.1"
+# Signature dispatch by AlgorithmIdentifier. The feature set covers
+# the algorithms surveyed TSAs actually sign with (RSA PKCS#1 v1.5
+# and ECDSA over P-256/P-384, SHA-2 digests); anything else fails
+# closed as unsupported.
+x509-verify = { version = "0.4.8", default-features = false, features = [
+    "p256",
+    "p384",
+    "rsa",
+    "sha2",
+    "std",
+] }

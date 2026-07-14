@@ -1,0 +1,20 @@
+[package]
+name = "tydence-ucd"
+description = "Compile-time Unicode character tables for tydence, generated from frozen UCD data"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+# Not inherited from the workspace: this package redistributes
+# Unicode Character Database files (data/), which carry their own
+# license on top of the project's dual license.
+license = "(MIT OR Apache-2.0) AND Unicode-3.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote.workspace = true
+regex.workspace = true
+syn.workspace = true

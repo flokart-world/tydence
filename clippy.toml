@@ -1,0 +1,19 @@
+# Clippy configuration for tydence
+# https://rust-lang.github.io/rust-clippy/master/index.html
+
+# Tracks the development toolchain until dependencies pin the real floor
+msrv = "1.95.0"
+
+# Threshold settings
+too-many-arguments-threshold = 3  # Strict: max 2 params + self, or 3 params without self
+type-complexity-threshold = 250
+cognitive-complexity-threshold = 30
+too-many-lines-threshold = 200
+
+# Allow certain patterns common in this codebase
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-dbg-in-tests = true
+
+# Documentation requirements - revisit before crates.io publication
+missing-docs-in-crate-items = false

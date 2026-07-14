@@ -1,0 +1,51 @@
+# Continuous integration: the same gate as the pre-commit hook —
+# formatting and clippy with warnings denied — plus the full test
+# suite. The suite is offline by design: live-TSA traffic happens
+# only when TYDENCE_RECORD_FREETSA re-records the cassettes, and CI
+# never sets it.
+#
+# The workflow also runs locally under act
+# (https://github.com/nektos/act):
+#
+#   act -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+#
+# The toolchain step bootstraps rustup when the image lacks it, so
+# act's default images work as they are.
+
+name: CI
+
+# Every push is checked — work lives on wip branches long before a
+# pull request exists. pull_request covers fork contributions, whose
+# pushes land outside this repository.
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # Third-party actions are pinned to commit hashes: a tag can
+      # be moved after the fact, a hash cannot.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Install the pinned Rust toolchain
+        # 1.95.0 is the workspace rust-version — the verified floor.
+        # The two are bumped together, so CI proves the floor still
+        # builds rather than whatever happens to be current.
+        run: |
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --default-toolchain none --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install 1.95.0 --profile minimal \
+            --component rustfmt --component clippy
+          rustup default 1.95.0
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace

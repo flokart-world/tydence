@@ -1,0 +1,19 @@
+# Free development TSA; best-effort by nature.
+Site freetsa-sha512
+    URL https://freetsa.org/tsr
+    Imprint sha512
+
+# Accredited TSA under contract.
+Site accredited-sha384
+    URL https://tsa.example.jp/tsr
+    Imprint sha384
+
+# Frequent, zero-cost stamping.
+Profile light
+    UseSite freetsa-sha512
+
+# Annual renewal-chain stamps: the accredited token is the point,
+# the free one is a bonus.
+Profile annual
+    UseSite accredited-sha384
+    UseSite freetsa-sha512 ContinueOnError

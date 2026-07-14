@@ -1,0 +1,27 @@
+Judges the stamps that carry a commit. From the starting commit
+(HEAD, or --commit) every line of history is followed to its nearest
+stamp claim, and each claim receives the full fail-closed verdict:
+
+  1. manifest syntax and format version,
+  2. bidirectional agreement between manifest and tree,
+  3. full token verification — imprint, CMS signature, chain to a
+     trust anchor, timestamping EKU, ESSCertID, revocation against
+     the sealed CRL snapshots,
+  4. renewal-chain linkage: the bound earlier artifacts recompute to
+     the manifest's past-manifest / past-token hashes.
+
+A stamp with several tokens stands as long as one token stands;
+every rejected token is still reported. Anything undecidable fails.
+
+Earlier stamps are covered through the renewal chain (check 4) of
+the stamps judged here; verifying the nearest claims is verifying
+the whole line of evidence in front.
+
+Trust anchors are supplied exactly as for stamping — see
+`tydence stamp --help`. CRL snapshots and companion certificates are
+taken from the sealed .tydence/ltv/ records and, when present, from
+the not-yet-sealed working-tree deposits, which are then reported so
+they can be sealed.
+
+Exits 0 when at least one stamp was judged and every judged stamp
+passed; 1 otherwise.
