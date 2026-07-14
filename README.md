@@ -61,13 +61,22 @@ and are obtained out of band (a TSA publishes its root):
 $ git config --add tydence.anchor ~/trust/freetsa-root.pem
 ```
 
-Stamp the current branch tip and judge the result:
+Stamp the current branch tip and judge the result. A site's first
+stamp learns the site's trust material too late to cover it, so
+adopting a site takes two stamps: the second — zero content change
+— seals what the first deposited:
 
 ```console
 $ tydence stamp --profile default
 sealed 5b1f0f4a... on refs/heads/master
+queued LTV deposits the manifest could not yet cover:
+  .tydence/ltv/certs/184b2554...9ec6.cer
+  .tydence/ltv/crls/184b2554...9ec6.crl
+seal them promptly with a follow-up stamp or an ordinary commit
+$ tydence stamp --profile default
+sealed 8c2d91e7... on refs/heads/master
 $ tydence verify
-PASS 5b1f0f4a... (freetsa at 2026-07-14T09:00:00+00:00)
+PASS 8c2d91e7... (freetsa at 2026-07-15T09:00:00+00:00)
 ```
 
 ## Commands
@@ -99,10 +108,6 @@ git. `tydence help <command>` documents each command in detail.
 - `tydence-cli` — the thin `tydence` binary over it
 - `tydence-ucd` — internal proc-macro crate generating the frozen
   Unicode tables the manifest path encoding pins per format version
-
-## Etymology
-
-The name is a coinage of *time* and *evidence*.
 
 ## Status
 
