@@ -178,15 +178,65 @@ pub struct CreatedStamp {
     pub warnings: Vec<acquire::SiteFailure>,
 }
 
+const STAMP_TRAILER_TOKEN: &str = "Tydence-Stamp:";
+
+/// Whether every line of the message's final paragraph reads as a
+/// `Token: value` trailer, by git's spelling of a token (alphanumeric
+/// words joined with `-`). Amend inheritance lets any author's
+/// message arrive here, so the reading is deliberately stricter than
+/// git's own, which takes a mostly-trailers paragraph: whatever this
+/// accepts — a prose tail spelling `Token: value` on every line
+/// included — git reads as a trailer block too, so joining it never
+/// changes what git would have seen in the tail.
+fn ends_with_trailer_block(message: &str) -> bool {
+    // The subject alone is never a trailer block: git wants the
+    // block as a paragraph of its own below the subject, and a
+    // one-line message with a colon ("fix: typo") must not read as
+    // one.
+    let Some((_, last_paragraph)) = message.rsplit_once("\n\n") else {
+        return false;
+    };
+    !last_paragraph.is_empty()
+        && last_paragraph.lines().all(|line| {
+            line.split_once(':').is_some_and(|(token, value)| {
+                !token.is_empty()
+                    && token.chars().all(|piece| {
+                        piece.is_ascii_alphanumeric() || piece == '-'
+                    })
+                    && !value.trim().is_empty()
+            })
+        })
+}
+
 /// Appends the `Tydence-Stamp` trailers to the commit message: one
 /// line per hash family, spelled exactly like a manifest payload
 /// field, so a later manifest's `past-manifest` line can be matched
 /// against plain `git log` output by eye. Convenience only — no
 /// verification reads commit messages.
+///
+/// Two shapes of incoming message get care. `Tydence-Stamp` lines
+/// already present are dropped wherever they sit: they describe a
+/// manifest this stamp replaces — an amended stamp inheriting the
+/// tip's message, say — and a stale pair beside a fresh one would
+/// mislead exactly the eye the trailers serve. And when the message
+/// already ends in a trailer block, the new lines join it instead of
+/// opening a paragraph of their own, which would demote the existing
+/// trailers (a `Co-Authored-By`, say) to plain body text in git's
+/// reading.
 fn message_with_trailers(message: &str, hashes: &PayloadHashes) -> String {
+    let kept: Vec<&str> = message
+        .lines()
+        .filter(|line| !line.starts_with(STAMP_TRAILER_TOKEN))
+        .collect();
+    let joined = kept.join("\n");
+    let body = joined.trim_end();
+    let separator = match ends_with_trailer_block(body) {
+        true => "\n",
+        false => "\n\n",
+    };
     format!(
-        "{}\n\nTydence-Stamp: sha256:{}\nTydence-Stamp: sha3-256:{}\n",
-        message.trim_end(),
+        "{body}{separator}{STAMP_TRAILER_TOKEN} sha256:{}\n\
+         {STAMP_TRAILER_TOKEN} sha3-256:{}\n",
         hex::encode(hex::LOWERCASE, &hashes.sha256),
         hex::encode(hex::LOWERCASE, &hashes.sha3_256),
     )
@@ -540,6 +590,53 @@ mod tests {
                 hex::encode(hex::LOWERCASE, &expected_hashes.sha3_256),
             )
         );
+    }
+
+    #[test]
+    fn trailers_open_their_own_block_after_prose() {
+        let hashes = hash_payload(b"sample");
+        let sealed =
+            message_with_trailers("Stamp with profile light", &hashes);
+        assert!(sealed.contains("light\n\nTydence-Stamp: sha256:"));
+    }
+
+    #[test]
+    fn trailers_join_a_block_the_message_ends_with() {
+        let hashes = hash_payload(b"sample");
+        let sealed = message_with_trailers(
+            "Fix the flow\n\nCo-Authored-By: A <a@example.com>",
+            &hashes,
+        );
+        assert!(sealed.contains(
+            "Co-Authored-By: A <a@example.com>\nTydence-Stamp: sha256:"
+        ));
+    }
+
+    #[test]
+    fn stale_stamp_trailers_are_replaced_not_stacked() {
+        let hashes = hash_payload(b"sample");
+        let once = message_with_trailers("Stamp with profile light", &hashes);
+        let twice = message_with_trailers(&once, &hashes);
+        assert_eq!(once, twice);
+    }
+
+    #[test]
+    fn prose_is_not_mistaken_for_a_trailer_block() {
+        assert!(!ends_with_trailer_block("a summary\n\nplain prose tail"));
+        assert!(!ends_with_trailer_block(
+            "a summary\n\nCo-Authored-By: A <a@example.com>\nprose after"
+        ));
+        assert!(ends_with_trailer_block(
+            "a summary\n\nCo-Authored-By: A <a@example.com>"
+        ));
+    }
+
+    #[test]
+    fn a_lone_subject_with_a_colon_is_not_a_trailer_block() {
+        assert!(!ends_with_trailer_block("fix: typo"));
+        let hashes = hash_payload(b"sample");
+        let sealed = message_with_trailers("fix: typo", &hashes);
+        assert!(sealed.starts_with("fix: typo\n\nTydence-Stamp: sha256:"));
     }
 
     #[test]

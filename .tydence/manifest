@@ -1,7 +1,7 @@
 tydence-manifest/v1
-parents -- f8865c08dce36fc4f1127ce90256501b687d9554
-past-manifest --commit f8865c08dce36fc4f1127ce90256501b687d9554 -- sha256:f6d5ecab331255d6f516650e11ce294a2edef15a23adee923a3acf4c341d0bd3 sha3-256:0ab62f1846db9b850a455c00715431681808bf44f0a30b9ae87258e3a95508cf
-past-token --commit f8865c08dce36fc4f1127ce90256501b687d9554 --spec rfc3161 --site freetsa -- sha256:b3b874bcfd5c79e613c159552df9b49dc8e1616405b1e9f5b27bd7ca20bbc09b sha3-256:2d13b96173fe4424234b790248ab9e5e86c1a55ccd179db9115f1f379cceb339
+parents -- 36329d82f9df749dcf7d3c0624c52750e430af63
+past-manifest --commit 36329d82f9df749dcf7d3c0624c52750e430af63 -- sha256:7d6cdd7f23a9f54003890bd3a54a4083a75483fc0d8c32b9d634a33f3035d39d sha3-256:8ac98cbabee3656d20fd03d789d62bc0ab5a356db80455553b5246ca05d2f24e
+past-token --commit 36329d82f9df749dcf7d3c0624c52750e430af63 --spec rfc3161 --site freetsa -- sha256:69b4c1b77f8cb23f789f3c0a3c56ee0a2fe8a1466c10fa4e44c669b39e7b22bc sha3-256:653bcec88618572c1fc87ed09d014b46262b6ab17010df08a919679cb43efd2a
 entry --path .githooks/README.md --mode 100644 --size 935 -- sha256:af3983059bc7482788f6cb781fe7ba749eeb773f357e6d9eae775f63fda38782 sha3-256:4d6f19d4fafd4a82eae1e523b41d9674f1d8c92228411f65bcf5c991b9dacc55
 entry --path .githooks/pre-commit --mode 100755 --size 5508 -- sha256:1700c48db8619e5ba395bffffb0cdcedc69b04cf4dfd058fc2197c08cd234d4e sha3-256:a65f140a51499d7fccf949b8834251c11c488b40a1b8d0aa54f76d98c2ec0365
 entry --path .github/workflows/ci.yml --mode 100644 --size 1990 -- sha256:008ce131cd7d159e6b25d5ad1b8efe2877b01eb77a01e264f852106d74f5e0e0 sha3-256:2861ed72f84be6b9da8c0867b912de34ab31d6675e645d6f50513ad44e52cfaf
@@ -22,9 +22,9 @@ entry --path crates/tydence-cli/LICENSE-MIT --mode 100644 --size 1076 -- sha256:
 entry --path crates/tydence-cli/src/help/drop.txt --mode 100644 --size 304 -- sha256:dded8453aa79f502bad4dd681213faa41aba68dd95ceae4e982ea420d8d64b75 sha3-256:088ab7cf99e2fb10794f2a4c94cf36cb2d1a252ca99a5852691204addd932b50
 entry --path crates/tydence-cli/src/help/long_about.txt --mode 100644 --size 740 -- sha256:30c3a92ee45b403f25a9a7b56d1af8407eeb205118f25e2ddc5013d1a60d946d sha3-256:dd0556bc76c023cbd2c6c29ee0d3b2811fffec21f6117c0b037d7d2850154c3d
 entry --path crates/tydence-cli/src/help/precommit.txt --mode 100644 --size 814 -- sha256:a2f0d87fcf72fac92cf5c739441ed24e54ad1bf9bac38288d413122170b1ff23 sha3-256:18d8ec2e76559904c4a62bb4cfb44addd84bc1cda349bb448c306fa4da427080
-entry --path crates/tydence-cli/src/help/stamp.txt --mode 100644 --size 2261 -- sha256:030d88d809c9f85751f9bac58f3babb50f9c3f15ecd5e8eb1e09fde6b31d79cc sha3-256:fad6c29f296c86354e2323111b0d8c2bcebb7f66afeb5ff6db24fd277b17e8ef
+entry --path crates/tydence-cli/src/help/stamp.txt --mode 100644 --size 2584 -- sha256:cbe864e3fc66abd1bf383172f5afc3cea3b7c4b08ed2bf74095f516669f65e8f sha3-256:6e2c37451645090ee221e105eafa4bfbb9492f1201847916a05f5e12324b90a1
 entry --path crates/tydence-cli/src/help/verify.txt --mode 100644 --size 1265 -- sha256:4faf8ce9ecba5f0674c99b846dfa74157bf59eb5bcf4eab9487b36e8c2e525aa sha3-256:230339209a8399a5382ee07ad6819f27e33c77fe43c98edcffdb15d8310bdd60
-entry --path crates/tydence-cli/src/main.rs --mode 100644 --size 14448 -- sha256:eb215ebae13eac7664aed5da196c9ed285dc7c0ba4171707e79f0bfd58e49094 sha3-256:779807d8f2549db784530d13a5fd75011d27df5c0856c158b19889258691cf45
+entry --path crates/tydence-cli/src/main.rs --mode 100644 --size 15577 -- sha256:c6f55f401254d4e2346463999431dad8561c0cc9c21d91a0f4108e2f98c9d090 sha3-256:d1b3131ce81f72592ca350941365b8e7f08632245208d3159dc5b047b76f3c03
 entry --path crates/tydence-ucd/Cargo.toml --mode 100644 --size 594 -- sha256:abe74a21cf1d557a297a2443354f27b248ca103baf0cad7c35bc9a515218777e sha3-256:e7351ee32fd27a4f754f3f94fa584ffbb5092fc7ffaa7e822b094124fa90a66e
 entry --path crates/tydence-ucd/LICENSE-APACHE --mode 100644 --size 11358 -- sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 sha3-256:8a0a8fb6c73ef27e4322391c7b28e5b38639e64e58c40a2c7a51cec6e7915a6a
 entry --path crates/tydence-ucd/LICENSE-MIT --mode 100644 --size 1076 -- sha256:4999561409a439f7404bc96de6c2ed536ac16bf01d9718af381324f03b6f2172 sha3-256:37c7615b24bfab7db249af234fa53174d5530eaea515217443f54d9613d20f31
@@ -58,7 +58,7 @@ entry --path crates/tydence/src/snapshot.rs --mode 100644 --size 38286 -- sha256
 entry --path crates/tydence/src/staging.rs --mode 100644 --size 10786 -- sha256:26cfc2c12c66a051a4379e0dabf99696f685fec97dee8a780e40665ac81c2fe8 sha3-256:7f6dd2defc96e1fc0cbd265b127711dc45d35a4fa0dd638b23ee72bc86326012
 entry --path crates/tydence/src/stamp/acquire.rs --mode 100644 --size 23864 -- sha256:970a337f7e7f938699d254052c55082550f68690c9cf9db1d1b7ce061b1683d7 sha3-256:26750e2a91c2c48864df7ebb349ff64b82bdcd7d1d80633daaee1d99e3241bc9
 entry --path crates/tydence/src/stamp/bind.rs --mode 100644 --size 19813 -- sha256:f3a45f4dea1ef8067ad7b099e28869307765cfcaeb3e92b84f415a95bd1631e6 sha3-256:38b21dfbd85e601e4eb79abfcb9088fa9fc287729932c804f4e63ed9bf0f79a9
-entry --path crates/tydence/src/stamp/create.rs --mode 100644 --size 27519 -- sha256:ef7ed29666eba5d5960eab34082f5d484a1f55c8961cfe83ba334facf7db8578 sha3-256:6a8f391cc5769f46e8499d46e4f0313affbed6db6acd281824bed8482124083a
+entry --path crates/tydence/src/stamp/create.rs --mode 100644 --size 31413 -- sha256:fe4f45138287bdb67714dbedd395b2a396b4ff85e2e255d3884e935082d74759 sha3-256:0a5477850e3d0c6abd9e199f534429dc6bfa480ff75f5b97c6b21bf1a194063d
 entry --path crates/tydence/src/stamp/ltv.rs --mode 100644 --size 36988 -- sha256:bbed05f7464befe0eebd5468729ac639ddad2c16116439c5955885b8c121910a sha3-256:ce02ea55a09d9c6b8920c285a72fd5a4a46d10a5ac85089f7dc8fa704a650c38
 entry --path crates/tydence/src/stamp/mod.rs --mode 100644 --size 936 -- sha256:04195f0041fbd03d3159172c29ae6dd1d3fe2832aef5c0cd4abce1fa32fd4fac sha3-256:20fc36a9972889dc4a4405cd7edc6d80899ba561f2870577e72a614f2480165b
 entry --path crates/tydence/src/stamp/seal.rs --mode 100644 --size 15376 -- sha256:5d9497ef0caaaab0c6fa1aad89c84635913c94d151a00925ae23dfbd589e9923 sha3-256:20a879b2cb150f8572fdb7b08e2171955f3eec424fcc6063c4c01f6673af2166
@@ -89,7 +89,7 @@ entry --path crates/tydence/tests/fixtures/freetsa/sha512.tsr --mode 100644 --si
 entry --path docs/coding-conventions.md --mode 100644 --size 13456 -- sha256:e92a05f2a3705f2f1ded7147a29cd685d721b2efa07c507b63010767647c9999 sha3-256:551dca961c903d3c219a1127a92d512d4c1f2ceb0b8592c6061696b30ab036d9
 entry --path docs/stamping.md --mode 100644 --size 19930 -- sha256:1d3c68d86ef3a5cf3cd038c15bfcb8d1b6ba746901b322a758beeeeb57802d46 sha3-256:a5db19f94b8c8f68fdabe0dadb88ff495dc3a7c8891b400c0dcbbd2c89373484
 entry --path docs/standard-abbreviations.md --mode 100644 --size 4212 -- sha256:a663fd5fd32dfc418723f2ee4d747a430c92eb43d1b0ce0921e408b04c113602 sha3-256:3b21b30dd4e14c0a4493d2aa5aa47bb4b49904f2bd6d74e56bd880d7468897a3
-entry --path docs/user_manuals/commands.md --mode 100644 --size 8241 -- sha256:d2636cf107982e7fd3d609dfebb4217bf1997228f6b06e18857169f0d9bc184a sha3-256:577e7714bc87aebe0ae6418c81543daae28e2bd39bb539e84bd20f078089bf5d
+entry --path docs/user_manuals/commands.md --mode 100644 --size 8528 -- sha256:cb292f9e3d1d734f820f2def861ddd26eeb2cb05198731a15c42c8a4dbfd2e4b sha3-256:c9a2f5ae1087dd8101cf51e9ffe310d243e20cf89d506546f01db6632116584f
 entry --path docs/user_manuals/config.md --mode 100644 --size 8215 -- sha256:03c5ebad6d57414480c7f4184655012857ee2cf8c0443d234b8d5c454f5a1def sha3-256:e4b98c8bf2b09f10a6b36d923f428a5793139bbeae6f2cf8b653babab11c1ed8
 entry --path rustfmt.toml --mode 100644 --size 1073 -- sha256:4b347dd76cd99f436fb2b9f73ea6d6d5e215aab4c2e8e7c02f38e81028be4a65 sha3-256:89d2b3a6fae8322dddfc7d5084c73a57553bdd500f0ba9cf79f3b5908c5cdb12
 entry --path rxconfig.yml --mode 100644 --size 240 -- sha256:04c8831063ffb09e51f74cbc78609ea61b628877ba40576e5d39705fef8c8c5a sha3-256:b15e82c33f6f7d2a7e13c08ac966aea6695fc7b1d952cff387947409ed364e6e

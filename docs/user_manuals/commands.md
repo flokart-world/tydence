@@ -84,15 +84,19 @@ the branch to it.
   warning and the stamp proceeds; a stamp that would seal zero
   valid tokens is aborted regardless.
 - `--amend` replaces the branch tip instead of adding a new commit:
-  the stamp takes over the tip's parents. This rewrites history and
-  is only safe while the tip has not been shared. Without it, the
-  stamp becomes a new commit with HEAD as its parent, certifying
-  the same content — the zero-content-change form that also serves
-  as renewal (§7).
-- `--message <TEXT>` sets the commit message; the default is
+  the stamp takes over the tip's parents and, unless `--message`
+  says otherwise, the tip's message, as with `git commit --amend`.
+  This rewrites history and is only safe while the tip has not been
+  shared. Without it, the stamp becomes a new commit with HEAD as
+  its parent, certifying the same content — the zero-content-change
+  form that also serves as renewal (§7).
+- `--message <TEXT>` sets the commit message; without it an
+  amending stamp keeps the tip's message and a plain stamp uses
   `Stamp with profile <NAME>`. Either way the message receives
-  `Tydence-Stamp` trailers carrying the manifest's double hash — a
-  convenience for reading `git log`; no verification reads them.
+  `Tydence-Stamp` trailers carrying the manifest's double hash —
+  joined into a trailer block the message already ends with, and
+  replacing any `Tydence-Stamp` lines of a stamp this one amends —
+  a convenience for reading `git log`; no verification reads them.
 
 The commit is written directly: index and working tree stay as they
 are. When a site's certificate chain is seen for the first time,

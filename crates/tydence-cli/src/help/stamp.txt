@@ -17,8 +17,10 @@ commit — stamp or ordinary. Seal deposits promptly.
 Without --amend the stamp becomes a new commit with HEAD as its
 parent, certifying the same content (a zero-content-change stamp,
 also the renewal form). With --amend the stamp replaces the branch
-tip — its parents become the tip's parents — which rewrites history
-and is only safe while the tip has not been shared.
+tip: its parents become the tip's parents and, unless --message
+says otherwise, its message stays the tip's own, as with git
+commit --amend. Replacing the tip rewrites history and is only
+safe while the tip has not been shared.
 
 TRUST ANCHORS
 
@@ -41,5 +43,8 @@ certificates.
 
 The message receives Tydence-Stamp trailers carrying the manifest's
 double hash, spelled exactly like the past-manifest payload a later
-manifest would bind it by. The trailers are a convenience for reading
-git log; no verification reads them.
+manifest would bind it by. They join a trailer block the message
+already ends with, so trailers like Co-Authored-By keep their
+standing, and Tydence-Stamp lines already present are dropped first
+— they spoke for a manifest this stamp replaces. The trailers are a
+convenience for reading git log; no verification reads them.

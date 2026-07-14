@@ -41,7 +41,8 @@ struct StampArgs {
     /// Replace the branch tip instead of adding a new commit
     #[arg(long)]
     amend: bool,
-    /// Commit message ("Stamp with profile <NAME>" if omitted)
+    /// Commit message (defaults to the tip's message with --amend,
+    /// to "Stamp with profile <NAME>" otherwise)
     #[arg(long, value_name = "TEXT")]
     message: Option<String>,
 }
@@ -154,6 +155,18 @@ fn signature_of(
     Ok(identity)
 }
 
+/// Decodes the tip's message for inheritance by an amending stamp.
+/// Stamp messages are otherwise new text; only here does existing
+/// commit content flow in, so only here can non-UTF-8 bytes appear.
+fn decode_tip_message(raw_message: &[u8]) -> Result<String, FailureCause> {
+    match std::str::from_utf8(raw_message) {
+        Ok(text) => Ok(text.to_string()),
+        Err(_) => {
+            Err("the tip's message is not UTF-8 text; pass --message".into())
+        }
+    }
+}
+
 /// The parents of the stamp being made: a plain stamp becomes HEAD's
 /// child, an amending stamp replaces HEAD by taking over its parents.
 fn stamp_parent_ids(
@@ -199,9 +212,14 @@ fn stamp(
     let parent_ids = stamp_parent_ids(args.amend, head_id, head_parent_ids);
     let author = signature_of(repository.author(), "author")?;
     let committer = signature_of(repository.committer(), "committer")?;
-    let message = match &args.message {
-        Some(text) => text.clone(),
-        None => format!("Stamp with profile {}", args.profile),
+    let message = match (&args.message, args.amend) {
+        (Some(text), _) => text.clone(),
+        // An amending stamp inherits the message of the tip it
+        // replaces, as git commit --amend does.
+        (None, true) => {
+            decode_tip_message(head_commit.message_raw()?.as_ref())?
+        }
+        (None, false) => format!("Stamp with profile {}", args.profile),
     };
     let created = tydence::create_stamp(
         repository,
@@ -400,6 +418,19 @@ mod tests {
         let parent = gix::ObjectId::empty_blob(gix::hash::Kind::Sha1);
         let parents = stamp_parent_ids(true, head, vec![parent]);
         assert_eq!(parents, vec![parent]);
+    }
+
+    #[test]
+    fn a_utf8_tip_message_is_inherited_as_spelled() {
+        assert_eq!(
+            decode_tip_message(b"wip: fix\n").expect("the message decodes"),
+            "wip: fix\n"
+        );
+    }
+
+    #[test]
+    fn a_non_utf8_tip_message_asks_for_an_explicit_one() {
+        assert!(decode_tip_message(&[0xff, 0xfe]).is_err());
     }
 
     #[test]
