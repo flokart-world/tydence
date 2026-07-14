@@ -1,0 +1,7 @@
+# Free development TSA; best-effort by nature.
+Site freetsa
+    URL https://freetsa.org/tsr
+    Imprint sha512
+
+Profile default
+    UseSite freetsa
