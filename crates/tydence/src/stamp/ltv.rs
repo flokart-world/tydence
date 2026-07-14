@@ -304,6 +304,24 @@ pub struct RecordedCrl {
     pub der_bytes: Vec<u8>,
 }
 
+/// One chain record found in the working tree, reported beside the
+/// refreshed snapshots so the stamping flow can mirror it.
+#[derive(Debug)]
+pub struct RecordedChain {
+    /// Repository-relative path of the chain file.
+    pub repository_path: String,
+    /// The recorded PEM bytes, exactly as written.
+    pub pem_bytes: Vec<u8>,
+}
+
+/// The working tree's LTV records: every chain record as it stands,
+/// and the CRL snapshots freshly recorded for those chains.
+#[derive(Debug)]
+pub struct Records {
+    pub chains: Vec<RecordedChain>,
+    pub crls: Vec<RecordedCrl>,
+}
+
 fn fetch_crl(certificate: &Certificate) -> Result<Option<FetchedCrl>, Error> {
     // A certificate with no distribution point extension advertises
     // no CRL to fetch; whether that leaves a token verifiable is
@@ -495,18 +513,21 @@ pub fn record(worktree: &Path, harvest: &Harvest) -> Result<(), Error> {
     Ok(())
 }
 
-/// Refreshes the CRL snapshots for every chain already on record
-/// (§5 step 2). Runs before the manifest is fixed and reports what
-/// it wrote, so the stamping flow can mirror the snapshots into the
-/// tree being stamped — the covering stamp must seal revocation data
-/// of the same moment as its tokens.
-pub fn refresh(worktree: &Path) -> Result<Vec<RecordedCrl>, Error> {
+/// Refreshes the CRL snapshots for every chain on record (§5
+/// step 2) — the covering stamp must seal revocation data of the
+/// same moment as its tokens — and reports the working tree's
+/// records, chains included, for the stamping flow to mirror. Runs
+/// before the manifest is fixed.
+pub fn refresh(worktree: &Path) -> Result<Records, Error> {
     let certs_directory = worktree.join(LTV_CERTS_PATH);
     let entries = match fs::read_dir(&certs_directory) {
         Ok(entries) => entries,
         // No records yet — the repository has not deposited a chain.
         Err(source) if source.kind() == ErrorKind::NotFound => {
-            return Ok(Vec::new());
+            return Ok(Records {
+                chains: Vec::new(),
+                crls: Vec::new(),
+            });
         }
         Err(source) => {
             return Err(Error::Filesystem {
@@ -516,20 +537,22 @@ pub fn refresh(worktree: &Path) -> Result<Vec<RecordedCrl>, Error> {
         }
     };
     materialize_record_directories(worktree)?;
-    let mut refreshed = Vec::new();
+    let mut chains = Vec::new();
+    let mut crls = Vec::new();
     for maybe_entry in entries {
         let entry = maybe_entry.map_err(|source| Error::Filesystem {
             path: certs_directory.clone(),
             source,
         })?;
         let file_path = entry.path();
-        let is_chain_record = file_path
+        let maybe_record_name = file_path
             .file_name()
             .and_then(|file_name| file_name.to_str())
-            .is_some_and(|file_name| file_name.ends_with(CHAIN_FILE_SUFFIX));
-        if !is_chain_record {
+            .filter(|file_name| file_name.ends_with(CHAIN_FILE_SUFFIX));
+        let Some(record_name) = maybe_record_name else {
             return Err(Error::ForeignRecord { path: file_path });
-        }
+        };
+        let repository_path = format!("{LTV_CERTS_PATH}/{record_name}");
         let pem_bytes =
             fs::read(&file_path).map_err(|source| Error::Filesystem {
                 path: file_path.clone(),
@@ -549,9 +572,13 @@ pub fn refresh(worktree: &Path) -> Result<Vec<RecordedCrl>, Error> {
             });
         }
         let fetched_crls = fetch_chain_crls(&chain)?;
-        refreshed.extend(record_chain_crls(worktree, &fetched_crls)?);
+        crls.extend(record_chain_crls(worktree, &fetched_crls)?);
+        chains.push(RecordedChain {
+            repository_path,
+            pem_bytes,
+        });
     }
-    Ok(refreshed)
+    Ok(Records { chains, crls })
 }
 
 #[cfg(test)]

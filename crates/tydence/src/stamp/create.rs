@@ -21,7 +21,7 @@ use super::bind;
 use super::config::{self, Config};
 use super::hex;
 use super::layout::CONFIG_PATH;
-use super::ltv::{self, RecordedCrl};
+use super::ltv;
 use super::manifest::{
     Manifest, PayloadHashes, UnprintableField, hash_payload,
 };
@@ -192,27 +192,40 @@ fn message_with_trailers(message: &str, hashes: &PayloadHashes) -> String {
     )
 }
 
-/// Mirrors the CRL snapshots step 2 wrote into the working tree onto
-/// the tree being stamped, so the manifest covers them.
-fn apply_refreshed_crls(
+/// Mirrors the working tree's LTV records onto the tree being
+/// stamped, so the manifest covers them. This is the step that
+/// seals the deposit a previous stamp left behind (§5): a record
+/// the tree already seals mirrors to the identical blob and changes
+/// nothing, so only deposits make a difference.
+fn apply_ltv_records(
     repository: &gix::Repository,
     base_tree_id: gix::ObjectId,
-    refreshed: &[RecordedCrl],
+    records: &ltv::Records,
 ) -> Result<gix::ObjectId, Error> {
-    if refreshed.is_empty() {
+    if records.chains.is_empty() && records.crls.is_empty() {
         return Ok(base_tree_id);
     }
     let object_access = |source: FailureCause| Error::ObjectAccess { source };
     let mut editor = repository
         .edit_tree(base_tree_id)
         .map_err(|source| object_access(Box::new(source)))?;
-    for record in refreshed {
+    let files = records
+        .chains
+        .iter()
+        .map(|chain| (&chain.repository_path, &chain.pem_bytes))
+        .chain(
+            records
+                .crls
+                .iter()
+                .map(|crl| (&crl.repository_path, &crl.pem_bytes)),
+        );
+    for (repository_path, pem_bytes) in files {
         let blob = repository
-            .write_blob(&record.pem_bytes)
+            .write_blob(pem_bytes)
             .map_err(|source| object_access(Box::new(source)))?
             .detach();
         editor
-            .upsert(&record.repository_path, EntryKind::Blob, blob)
+            .upsert(repository_path, EntryKind::Blob, blob)
             .map_err(|source| object_access(Box::new(source)))?;
     }
     editor
@@ -282,11 +295,10 @@ where
         .workdir()
         .ok_or(Error::BareRepository)?
         .to_owned();
-    // §5 step 2 — refresh the recorded CRLs and mirror them into the
-    // tree, so this stamp seals revocation data of its own moment.
-    let refreshed = ltv::refresh(&worktree).map_err(Error::Ltv)?;
+    // §5 step 2.
+    let records = ltv::refresh(&worktree).map_err(Error::Ltv)?;
     let content_tree_id =
-        apply_refreshed_crls(repository, inputs.base_tree_id, &refreshed)?;
+        apply_ltv_records(repository, inputs.base_tree_id, &records)?;
     let config = read_config(repository, content_tree_id)?;
     // §5 step 3 — the manifest is a pure function of the snapshot
     // and the binding set; serializing it fixes the imprint.
@@ -308,7 +320,8 @@ where
     // §5 steps 4–5 — one fully verified token per selected site. The
     // refreshed snapshots serve as the base CRLs; each token's own
     // chain material arrives through the deposit supplement.
-    let refreshed_crls: Vec<Vec<u8>> = refreshed
+    let refreshed_crls: Vec<Vec<u8>> = records
+        .crls
         .into_iter()
         .map(|record| record.der_bytes)
         .collect();
@@ -602,6 +615,51 @@ mod tests {
         )
         .expect("the second stamp verifies with its binding");
         assert_eq!(summary.accepted.len(), 1);
+        run_git(repository_dir.path(), &["fsck", "--strict"]);
+    }
+
+    #[test]
+    fn a_follow_up_stamp_alone_seals_the_previous_stamps_deposit() {
+        let fixture = live_fixture();
+        let repository_dir = tempfile::tempdir().expect("tempdir");
+        prepare_repository(repository_dir.path(), &fixture);
+        let first = stamp_head(repository_dir.path(), &fixture)
+            .expect("the first stamp seals");
+        let first_manifest_text = String::from_utf8(blob_bytes_at(
+            repository_dir.path(),
+            first.commit_id,
+            MANIFEST_PATH,
+        ))
+        .expect("the manifest is text");
+        // The first stamp cannot cover its own deposit: the chain
+        // was learned only after the manifest was fixed.
+        assert!(
+            !entry_paths(&first_manifest_text)
+                .iter()
+                .any(|path| path.starts_with(LTV_CERTS_PATH.as_bytes()))
+        );
+        // No ordinary commit in between: the follow-up stamp itself
+        // seals the deposit (§5) — the zero-content-change form that
+        // makes a freshly adopted site self-contained.
+        let second = stamp_head(repository_dir.path(), &fixture)
+            .expect("the second stamp seals");
+        let second_manifest_text = String::from_utf8(blob_bytes_at(
+            repository_dir.path(),
+            second.commit_id,
+            MANIFEST_PATH,
+        ))
+        .expect("the manifest is text");
+        let paths = entry_paths(&second_manifest_text);
+        assert!(
+            paths
+                .iter()
+                .any(|path| path.starts_with(LTV_CERTS_PATH.as_bytes()))
+        );
+        assert!(
+            paths
+                .iter()
+                .any(|path| path.starts_with(LTV_CRLS_PATH.as_bytes()))
+        );
         run_git(repository_dir.path(), &["fsck", "--strict"]);
     }
 

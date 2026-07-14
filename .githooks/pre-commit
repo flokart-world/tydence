@@ -57,6 +57,16 @@ if ! cargo clippy --workspace --all-targets -- -D warnings; then
     exit 1
 fi
 
+# Stamp commits never pass through this hook — `tydence stamp` seals
+# them directly — so whatever this guard catches is a resurrected
+# artifact, and the command itself explains the way out. Running from
+# source sidesteps any installed-binary requirement; a cargo failure
+# aborts loudly like every other check here.
+echo "Guarding against resurrected stamp artifacts..."
+if ! cargo run -p tydence-cli --quiet -- precommit; then
+    exit 1
+fi
+
 echo "Checking file formatting..."
 HAS_ERRORS=false
 
