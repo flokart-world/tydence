@@ -168,9 +168,10 @@ pub struct CreateInputs<'a> {
     pub expected: gix::refs::transaction::PreviousValue,
 }
 
-/// A sealed stamp: the commit that now carries it, the double hash
-/// of its manifest, and the tolerated per-site failures that must
-/// still reach the user's eyes.
+/// A sealed stamp: the commit that now carries it, the hashes of
+/// its manifest — one per hash family the manifest format carries —
+/// and the tolerated per-site failures that must still reach the
+/// user's eyes.
 #[derive(Debug)]
 pub struct CreatedStamp {
     pub commit_id: gix::ObjectId,

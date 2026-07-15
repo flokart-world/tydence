@@ -2232,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "tydence"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cmpv2",
  "cms",
@@ -2254,7 +2254,7 @@ dependencies = [
 
 [[package]]
 name = "tydence-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "tydence",
@@ -2262,7 +2262,7 @@ dependencies = [
 
 [[package]]
 name = "tydence-ucd"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "quote",
  "regex",

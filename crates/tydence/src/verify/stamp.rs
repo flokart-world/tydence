@@ -25,7 +25,9 @@
 use std::fmt;
 
 use super::binding::{self, BoundStamp};
-use super::manifest::{Entry, ManifestParseError, parse_manifest};
+use super::manifest::{
+    Entry, ManifestParseError, PayloadHashes, hash_payload, parse_manifest,
+};
 use super::token::{self, TokenSummary, TrustData};
 use super::tree;
 use super::x509::FailureCause;
@@ -72,6 +74,11 @@ pub struct StampInputs<'a> {
 /// The outcome of a passed stamp verification.
 #[derive(Debug)]
 pub struct StampSummary {
+    /// The hashes of the manifest bytes the accepted tokens vouch
+    /// for, one per hash family the manifest format carries. Living
+    /// only in a passed verdict, a reported digest is always a
+    /// verified one — safe to transcribe into an external anchor.
+    pub manifest_hashes: PayloadHashes,
     /// The tokens the stamp's validity rests on; never empty.
     pub accepted: Vec<AcceptedToken>,
     pub rejected: Vec<RejectedToken>,
@@ -182,7 +189,11 @@ pub fn run(inputs: &StampInputs<'_>) -> Result<StampSummary, Error> {
     if accepted.is_empty() {
         return Err(Error::AllTokensRejected(rejected));
     }
-    Ok(StampSummary { accepted, rejected })
+    Ok(StampSummary {
+        manifest_hashes: hash_payload(inputs.manifest_bytes),
+        accepted,
+        rejected,
+    })
 }
 
 #[cfg(test)]
@@ -239,6 +250,26 @@ mod tests {
         assert_eq!(summary.accepted.len(), 1);
         assert_eq!(summary.accepted[0].site, "testsite");
         assert!(summary.rejected.is_empty());
+    }
+
+    #[test]
+    fn a_passed_verdict_reports_the_manifests_double_hash() {
+        let (_, token_bytes, bundle) = standard_setup();
+        let tokens = [SiteToken {
+            site: "testsite",
+            bytes: &token_bytes,
+        }];
+        let summary = run(&inputs_of(EMPTY_MANIFEST, &tokens, &bundle))
+            .expect("a stamp with a valid token passes");
+        // Expected digests computed outside this codebase, so a
+        // hash_payload defect cannot cancel out on both sides.
+        assert_eq!(
+            summary.manifest_hashes.to_string(),
+            "sha256:\
+             e91b6fcd98da4986b125c5927b0e785413ec9a463d91a21c13ff58876e16a531 \
+             sha3-256:\
+             bfcef36df83d45b6117285c4f2c868961f2dbb2c7424de0301dca6c728c395d7"
+        );
     }
 
     #[test]

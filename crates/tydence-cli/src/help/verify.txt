@@ -13,6 +13,16 @@ stamp claim, and each claim receives the full fail-closed verdict:
 A stamp with several tokens stands as long as one token stands;
 every rejected token is still reported. Anything undecidable fails.
 
+Under each passing stamp's line, the sealed manifest's double hash
+is printed exactly as the manifest grammar spells it:
+
+  PASS <commit> (<site> at <genTime>)
+    manifest sha256:<hex> sha3-256:<hex>
+
+This is the value to transcribe into an anchor outside the
+repository — a dated notarial declaration, say. It appears only on
+a passed verdict, so a printed digest is always a verified one.
+
 Earlier stamps are covered through the renewal chain (check 4) of
 the stamps judged here; verifying the nearest claims is verifying
 the whole line of evidence in front.

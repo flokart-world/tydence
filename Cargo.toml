@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.95.0"
 license = "MIT OR Apache-2.0"
@@ -81,7 +81,7 @@ sha2 = "0.10.9"
 sha3 = "0.10.9"
 syn = "2.0.118"
 tempfile = "3.27"
-tydence = { path = "crates/tydence", version = "0.1.0" }
+tydence = { path = "crates/tydence", version = "0.2.0" }
 tydence-ucd = { path = "crates/tydence-ucd", version = "0.1.0" }
 # The live TSA transport. default-features off drops the content
 # codecs a raw-DER exchange never uses; "platform-verifier" makes

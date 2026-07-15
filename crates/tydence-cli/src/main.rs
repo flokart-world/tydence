@@ -338,6 +338,7 @@ fn verify(
                     verdict.commit_id,
                     accepted.join(", ")
                 );
+                println!("  manifest {}", summary.manifest_hashes);
                 for rejection in &summary.rejected {
                     println!(
                         "  note: token {} rejected: {}",

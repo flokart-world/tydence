@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0] - 2026-07-16
+
+### Added
+- `tydence verify` prints the sealed manifest's double hash
+  (SHA-256 and SHA3-256) under each passing stamp — the value to
+  transcribe into anchors outside the repository.
+
 ## [0.1.0] - 2026-07-15
 
 ### Added

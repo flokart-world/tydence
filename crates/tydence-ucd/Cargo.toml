@@ -1,11 +1,12 @@
 [package]
 name = "tydence-ucd"
 description = "Compile-time Unicode character tables for tydence, generated from frozen UCD data"
-version.workspace = true
+# The frozen UCD tables change on their own clock, so releases that
+# leave this crate untouched must not republish it.
+version = "0.1.1"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-readme.workspace = true
 # Not inherited from the workspace: this package redistributes
 # Unicode Character Database files (data/), which carry their own
 # license on top of the project's dual license.

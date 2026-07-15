@@ -130,15 +130,22 @@ One line per judged stamp reports the verdict:
 
 ```
 PASS <commit> (<site> at <genTime>, ...)
+  manifest sha256:<hex> sha3-256:<hex>
 FAIL <commit>: <cause>
 ```
 
-A stamp with several tokens stands as long as one token stands;
-every rejected token is still reported as a note under its stamp's
-line. When the starting commit is not itself a stamp, the command
-says so: content since the judged stamps rests on git integrity
-alone. Unsealed working-tree deposits (§3) are used as CRL sources
-where they apply, then reported so they can be sealed.
+Under each passing stamp's line, the sealed manifest's double hash
+is printed exactly as the manifest grammar spells it. This is the
+value to transcribe into an anchor outside the repository — a dated
+notarial declaration, say — and it appears only on a passed
+verdict, so a printed digest is always a verified one. A stamp with
+several tokens stands as long as one token stands; every rejected
+token is still reported as a note under its stamp's line.
+
+When the starting commit is not itself a stamp, the command says
+so: content since the judged stamps rests on git integrity alone.
+Unsealed working-tree deposits (§3) are used as CRL sources where
+they apply, then reported so they can be sealed.
 
 The command exits 0 only when at least one stamp was judged and
 every judged stamp passed; a passing repository with nothing proven

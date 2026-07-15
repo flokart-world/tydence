@@ -77,7 +77,12 @@ $ tydence stamp --profile default
 sealed 8c2d91e7... on refs/heads/master
 $ tydence verify
 PASS 8c2d91e7... (freetsa at 2026-07-15T09:00:00+00:00)
+  manifest sha256:64ec88ca...42c3 sha3-256:82c8bd8f...09a1
 ```
+
+The digest line is the sealed manifest's double hash — the value to
+transcribe into anchors outside the repository. The command manual
+covers the details.
 
 ## Commands
 

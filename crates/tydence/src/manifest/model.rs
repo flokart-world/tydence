@@ -59,11 +59,15 @@ pub struct PayloadHashes {
     pub sha3_256: [u8; 32],
 }
 
-impl PayloadHashes {
-    /// Renders the hash fields of a record payload: the exact form
-    /// the `TryFrom` implementation below parses.
-    fn serialize(&self) -> String {
-        format!(
+impl fmt::Display for PayloadHashes {
+    /// Spells the hash fields of a record payload: the exact form
+    /// the `TryFrom` implementation below parses. Display rather
+    /// than a private helper, so a verifier's report spells a digest
+    /// exactly as the manifest grammar does and the two can be
+    /// matched by eye.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
             "sha256:{} sha3-256:{}",
             hex::encode(hex::LOWERCASE, &self.sha256),
             hex::encode(hex::LOWERCASE, &self.sha3_256)
@@ -245,7 +249,7 @@ fn entry_line(entry: &Entry) -> String {
         encode_path(&entry.path),
         <&str>::from(entry.mode),
         entry.size,
-        entry.content_hashes.serialize()
+        entry.content_hashes
     )
 }
 
@@ -271,8 +275,7 @@ fn push_group_lines(
     }
     output.push_str(&format!(
         "past-manifest --commit {} -- {}\n",
-        group.commit,
-        group.manifest_hashes.serialize()
+        group.commit, group.manifest_hashes
     ));
     for token in ordered_tokens(&group.tokens) {
         bare_token(token.spec.label(), "spec")?;
@@ -282,7 +285,7 @@ fn push_group_lines(
             group.commit,
             token.spec.label(),
             token.site,
-            token.token_hashes.serialize()
+            token.token_hashes
         ));
     }
     Ok(())
